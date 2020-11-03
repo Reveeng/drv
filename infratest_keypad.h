@@ -35,9 +35,9 @@ enum {
  * GLOBAL PROTOTYPES
  **********************/
  lv_indev_t * infratest_keypad(void);
- void infratest_keypad_init(lv_indev_t ** indev_btns);
- lv_indev_t ** init_indev_btns(void);
- void set_group_to_hardware_btn(lv_indev_t ** keypad_btns,lv_group_t * group);
+ void infratest_keypad_init(void);
+ void init_indev_btns(void);
+ //void set_group_to_hardware_btn(lv_indev_t ** keypad_btns,lv_group_t * group);
 
 /**********************
  *      MACROS

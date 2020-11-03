@@ -35,35 +35,16 @@ typedef struct _key_map
     uint16_t state;
 } KeyMap;
 
-static KeyMap key_map[4] =
-{
-    { HW_KEY_CODE_UP  ,LV_KEY_NEXT, LV_INDEV_STATE_REL},
-    { HW_KEY_CODE_DOWN,LV_KEY_PREV, LV_INDEV_STATE_REL},
-    { HW_KEY_CODE_MENU,LV_KEY_ENTER, LV_INDEV_STATE_REL},
-    { HW_KEY_CODE_ZOOM,LV_KEY_ESC, LV_INDEV_STATE_REL},
-};
-static const int key_map_size = sizeof(key_map) / sizeof(KeyMap);
+static KeyMap last_key = { HW_KEY_CODE_UP  ,LV_KEY_NEXT, LV_INDEV_STATE_REL};
 static lv_point_t point_array[] = {{5,0},{10,0},{15,0},{20,0}};
+static uint16_t btn_code = HW_KEY_CODE_UP;
 
-/**static uint16_t get_event_key(uint16_t btn_code){
-    switch (btn_code){
-        case HW_KEY_CODE_UP:
-            return LV_KEY_NEXT;
-        case HW_KEY_CODE_DOWN:
-            return LV_KEY_PREV;
-        case HW_KEY_CODE_MENU:
-            return LV_KEY_ENTER;
-        case HW_KEY_CODE_ZOOM:
-            return LV_KEY_ESC;
-    }
-}*/
 /**********************
  *  STATIC PROTOTYPES
  **********************/
 static bool keypad_init(void);
 static bool keypad_read(lv_indev_drv_t * indev_drv, lv_indev_data_t * data);
 static uint16_t keypad_get_key(void);
-static lv_indev_t ** keypad_btns;
 
 /**********************
  *  STATIC VARIABLES
@@ -84,39 +65,21 @@ lv_indev_t * infratest_keypad(void)
     return indev_keypad;
 }
 
-void init_indev_btns(void){
-    keypad_btns = (lv_indev_drv_t **)malloc(4*sizeof(lv_indev_drv_t *));
-}
-/**
-void set_group_to_hardware_btn(lv_indev_t ** keypad_btns,lv_group_t * group){
-    for (uint16_t i = 0; i!= 4; i++){
-        lv_indev_set_group(keypad_btns[i],group);
-    }
-}*/
 
 void infratest_keypad_init(void)
 {
     lv_indev_drv_t indev_drv;
     if (!keypad_init())
             return;
-    for (uint16_t i=0; i < key_map_size; i++){
-
-        lv_indev_t * indev_btn;
-        lv_indev_drv_init(&indev_drv);
-        indev_drv.type = LV_INDEV_TYPE_BUTTON;
-        indev_drv.read_cb = keypad_read;
-        indev_drv.user_data = &(key_map[i].code);
-        indev_btn = lv_indev_drv_register(&indev_drv);
-        lv_indev_set_button_points(indev_btn,&(point_array[i]));
-        indev_btns[i] = (lv_indev_drv_t *)malloc(sizeof(lv_indev_drv_t));
-        indev_btns[i] = &indev_drv;
-    }
-
-    /* Later you should create group(s) with `lv_group_t * group = lv_group_create()`,
-     * add objects to the group with `lv_group_add_obj(group, obj)`
-     * and assign this input device to group to navigate in it:
-     * `lv_indev_set_group(indev_keypad, group);` */
+    lv_indev_t * indev_btn;
+    lv_indev_drv_init(&indev_drv);
+    indev_drv.type = LV_INDEV_TYPE_BUTTON;
+    indev_drv.read_cb = keypad_read;
+    indev_drv.user_data = &(btn_code);
+    indev_btn = lv_indev_drv_register(&indev_drv);
+    lv_indev_set_button_points(indev_btn,&(point_array[i]));
 }
+
 
 /**********************
  *   STATIC FUNCTIONS
@@ -159,25 +122,18 @@ static bool keypad_init(void)
 /* Will be called by the library to read the mouse */
 static bool keypad_read(lv_indev_drv_t * indev_drv, lv_indev_data_t * data)
 {
-    int number_in_key_map = 0;
     uint16_t new_byte = keypad_get_key();
     uint16_t * drv_byte = (uint16_t *)indev_drv.user_data;
     if (new_byte & *(drv_byte)){
-        for (uint16_t i=0; i < key_map_size; i++){
-            if (*(drv_byte) & key_map[i].code){
-                number_in_key_map = i;
-                break;
-            }
-        }
-        if (key_map[number_in_key_map].state == LV_INDEV_STATE_PR) {
+        if (last_key.state == LV_INDEV_STATE_PR) {
             // wait for releas pressed key
-            key_map[number_in_key_map].state = LV_INDEV_STATE_REL;
+            last_key.state = LV_INDEV_STATE_REL;
         } else {
-            key_map[number_in_key_map].state = LV_INDEV_STATE_PR;
+            last_key.state = LV_INDEV_STATE_PR;
         }
     }
-    data->key = key_map[number_in_key_map].lv_code;
-    data->state = key_map[number_in_key_map].state;
+    data->key = last_key.lv_code;
+    data->state = last_key.state;
     if (indev_keypad->group != NULL) {
         lv_obj_t * act = lv_group_get_focused(indev_keypad->group);
         lv_event_send(act, HW_EVENT_KEY_PRESSED, &new_byte);
